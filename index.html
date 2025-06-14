@@ -1,0 +1,176 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>電車時刻表</title>
+  <style>
+    body {
+      font-family: "Helvetica Neue", sans-serif;
+      background-color: #ffffff;
+      color: #333333;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      padding: 20px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .tabs {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      border: 1px solid #ccc;
+      margin: 0 5px;
+      border-radius: 5px;
+    }
+    .tab.active {
+      background-color: #007bff;
+      color: #fff;
+    }
+    .card {
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      padding: 15px;
+      margin-bottom: 10px;
+      background-color: #f9f9f9;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .route-map {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: #f2f2f2;
+      border-radius: 5px;
+    }
+    .update-button {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      margin-top: 20px;
+      background-color: #28a745;
+      color: #fff;
+      text-align: center;
+      border-radius: 5px;
+      text-decoration: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>電車時刻表</h1>
+      <p>現在時刻: <span id="current-time"></span></p>
+    </div>
+    <div class="tabs">
+      <div class="tab active" data-route="up">JR上り</div>
+      <div class="tab" data-route="down">JR下り</div>
+      <div class="tab" data-route="bus">宮若バス</div>
+    </div>
+    <div id="schedule-container"></div>
+    <div class="route-map" id="route-map"></div>
+    <a class="update-button" onclick="fetchSchedule()">更新</a>
+  </div>
+
+  <script>
+    const urls = {
+      up: {
+        weekday: "https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLgMBW2pdfpQDO0yyQdh5DNyLy333SL3PrNvKrqUpJdstX0hUhJFbYTKdA4SYzKfcSzsDPYmvhPCt7-PZlEcSFhesnYN2EVnFqf9n8T-Um0aPxs6Il1LoMrramCRGpVov-BR_Q6myl_4KCNRnW5EUlAds0EqzNTR87aoWNIGuqDb7rxMb2sZoBd4KBlVBK0PHP_68xcU9Ql37mEGkJ0J1OkxOPXkREggy_ioKLFkGU3v3LjAmiwnx9zUQB7iXyk_X7ysJG6OXc6Zd0Y87F6wbR4uhkgmHOZ3rAi0bMr4MJYiJbWrdkKhYbDTEzn9SWPHcwlW2NRO9GewF700ifkCIBjZQRZdbYfaqgZaLRTxk2fc0YFCJ2QHIS-v3-1-x_HFAB5Mrv08v6nGcTg4RK7WZrDRIaM5rA&lib=MyfKUaEALj44rC99zOYKScJcfGgoysikY",
+        weekend: "https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLh8J2TlBErgcRLXrzzOmKkX5uesjDloY5IbtFj7ETR_N9jvO6JKRBjRGtDV2UkJe-rXjo4Ysd44QixqLkUD82PIp10vhLeyfEUB1GlhiGFRxm-hLLsI3xfr4ZszkQZXjp6_M26UkpwF1HWA_MRwmXNCGqsB3n8iLIXPL9aFs67Df60XbymVnmkpw99lZsFa40IsBX2pogWydQhAz8c-Hr_8AxQrAfZHKNb6hISCVk2i4VMS-WVzrOim6a3REvd01FBoyL1Mr3hgn0-iYMiljCk4BPYvUPCEeGJgmL24lCxt5ZPc68pvqwitFOqe0zj1W02VqqtVZEvACD6PWXQN1xyZEn91qUotdelEtNUXbLD12Z3CvwNopNoy1syqAhJIKLYCD1c39w5Coh90Xe1tdGuw2woGDA&lib=MyfKUaEALj44rC99zOYKScJcfGgoysikY"
+      },
+      down: {
+        weekday: "https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLiPDHF-s0crOikc7cWHd4PdLRMxHgp6RaYKGLWKn0VRcIwufbjvH3AjLqfe1AeloZKncih4DSu43cZ6xCw8yNs8hQdHYr2_vrM8DhgNSeCeqW_6cDJObadJqYoOEWtPF-5ESbl1sYsVsdSp2yACFMJ-53c2iemVLnK1jKqOMSgOXw1Dj_OwArohlu06raDPG3x-BW4A5fsRVexBJaXNBsu7aNz3d1JwH26k_tfY4eLI5FNUivL2qbLv6Y5I7GXF6vGHFaoVVZVhb6Tzu-T6o6twWGnejr2-Q-UYUmgN5AvdgmvU92K_SWxXuL0KAVWG9XFh9p5k58Twxch1nPY6o5-mgCXf4ooLfQT8k9RdgSks-TlJR2Lqlwn0O6vF0XXYq1ETxi_lN9UZ-5D0yM5VFbj4IJPh1w&lib=MyfKUaEALj44rC99zOYKScJcfGgoysikY",
+        weekend: "https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLhbSGvHYblAmdLgWKy5KT_E200ZTnSQs7-dS0dJyajGkLFTq7sJuqjtB51ipXvpBOa70kIFlHes3NHCxZBa9w_0fvCVowHPj36XeYxJ_FdaeORAi4o4heO40R4SUWnxuHNrKsmt5zyTuztb7w_xML1p3oyvSonZfF7NgFOXskbYTYL0KnVTeZyL6u8-5R22hgCeomJV2e8pHoOM2PVYiFiy59i4df34179sgzGh1pwMRK-sKlRN3M8c1B4qzqb2eTLroINUjDHvAfuI_oJnPotBeW26QQvGw25mkdi40y2IACrNBNOi39g-J5hjbAcCEP1hnx7wFYO9DWKPDWuM6La5vhVzxthD4su-0dQDAEI3zLEJjt8icnnfv-pmxs-WTQaaps78ac5QglxYELd7UUvRLP69kg&lib=MyfKUaEALj44rC99zOYKScJcfGgoysikY"
+      },
+      bus: "https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLibYzvuha55aS5-xIE9jLnd0tmgFSITomkEMDDAgrrMqAM4NKQ0ENRx27vTICS1G-fniHzamlF6B3XAx0HAlUbgj1vHAPOSYF6cx6QBIik2yyk5SsSIzibPwJI_75gxqQFZR7meOUoKNTSJNbF5Dt6kSZuGB1a46v5h_cnipJOO9vgAKSb8hgRzGxS3MWYCEd3uaNI0jvZhJ2gmlEDd1ri5ce7ymAFdRtEDqpLd_PwBE11M8djb9emkZKPn5y10OUykxLTuN_CKLdfMhopAxaU7aAQP6hAQM9HRkxs9aYZqs4uEES0KbUARKHFjTucRSbFMA6INYZx48PmCEtmNlZsyIcw3_A&lib=MyfKUaEALj44rC99zOYKScJcfGgoysikY"
+    };
+
+    function updateCurrentTime() {
+      const now = new Date();
+      const time = now.toLocaleTimeString("ja-JP", { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      document.getElementById("current-time").textContent = time;
+    }
+
+    function getMinutesUntil(timeStr) {
+      const now = new Date();
+      const [h, m] = timeStr.split(":").map(Number);
+      const target = new Date(now);
+      target.setHours(h, m, 0, 0);
+      if (target < now) target.setDate(target.getDate() + 1);
+      return Math.floor((target - now) / 60000);
+    }
+
+    function fetchSchedule() {
+      const route = document.querySelector(".tab.active").dataset.route;
+      const day = new Date().getDay();
+      const isWeekend = (day === 0 || day === 6);
+      const url = route === "bus" ? urls[route] : (isWeekend ? urls[route].weekend : urls[route].weekday);
+
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          const container = document.getElementById("schedule-container");
+          container.innerHTML = "";
+          const now = new Date();
+          const upcomingTrains = data.filter(train => {
+            const [h, m] = train["発車時刻"].split(":").map(Number);
+            const departure = new Date(now);
+            departure.setHours(h, m, 0, 0);
+            return departure > now;
+          }).slice(0, 3);
+
+          upcomingTrains.forEach(train => {
+            const minutes = getMinutesUntil(train["発車時刻"]);
+            const card = document.createElement("div");
+            card.className = "card";
+            card.innerHTML = `
+              <div>
+                <h2>${train["発車時刻"]} - ${train["行き先"]}</h2>
+                <p>種別: ${train["種別"]}</p>
+              </div>
+              <div class="minutes-left">${minutes}分</div>
+            `;
+            container.appendChild(card);
+          });
+        });
+    }
+
+    function updateRouteMap(route) {
+      const map = document.getElementById("route-map");
+      map.innerHTML = route === "up"
+        ? "福工大前 → 福間 → 赤間 → 折尾 → 小倉 → 門司港"
+        : route === "down"
+        ? "福工大前 → 香椎 → 千早 → 吉塚 → 博多"
+        : "宮若市役所 → 若宮IC → 勝野駅前";
+    }
+
+    document.querySelectorAll(".tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        const route = tab.dataset.route;
+        fetchSchedule();
+        updateRouteMap(route);
+      });
+    });
+
+    updateCurrentTime();
+    fetchSchedule();
+    updateRouteMap("up");
+    setInterval(updateCurrentTime, 1000);
+    setInterval(fetchSchedule, 30000);
+  </script>
+</body>
+</html>
